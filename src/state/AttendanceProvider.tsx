@@ -82,7 +82,7 @@ export function attendanceReducer(state: AttendanceState, action: AttendanceActi
     case 'CHECK_IN': {
       if (!state.employees.some((employee) => employee.id === action.employeeId)) return fail(state, action.type, 'Select a valid employee.')
       if (!validTimestamp(action.at)) return fail(state, action.type, 'Check-in time is invalid.')
-      if (timestamp(action.at) >= timestamp(DEMO_NOW)) return fail(state, action.type, 'Check-in must be before the current demo time.')
+      if (timestamp(action.at) > Date.now() + 60_000) return fail(state, action.type, 'Check-in cannot be in the future.')
       if (state.attendanceRecords.some((record) => record.employeeId === action.employeeId && (record.workDate === action.workDate || record.checkOutAt === null))) return fail(state, action.type, 'This employee already has attendance for the date or an open session.')
       const id = `att-manual-${action.employeeId}-${timestamp(action.at)}`
       const record: AttendanceRecord = { id, employeeId: action.employeeId, assignmentId: action.assignmentId, workDate: action.workDate, checkInAt: action.at, checkOutAt: null, breaks: [], managerNote: action.note ?? '' }

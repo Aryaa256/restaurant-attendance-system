@@ -32,8 +32,8 @@ describe('attendance reducer', () => {
   })
 
   it('rejects manual check-ins at or after the injected demo clock', () => {
-    const state = attendanceReducer(createSeedState(), { type: 'CHECK_IN', employeeId: 'emp-15', workDate: '2026-10-02', at: '2026-10-02T10:30:00+05:30' })
-    expect(state.lastMutation).toMatchObject({ ok: false, message: 'Check-in must be before the current demo time.' })
+    const state = attendanceReducer(createSeedState(), { type: 'CHECK_IN', employeeId: 'emp-15', workDate: '2099-10-02', at: '2099-10-02T10:30:00+05:30' })
+    expect(state.lastMutation).toMatchObject({ ok: false, message: 'Check-in cannot be in the future.' })
     expect(state.attendanceRecords.some((record) => record.employeeId === 'emp-15' && record.workDate === '2026-10-02')).toBe(false)
   })
 
