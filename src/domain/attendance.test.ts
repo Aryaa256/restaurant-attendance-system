@@ -19,4 +19,11 @@ describe('attendance rules', () => {
     expect(getAttendanceStatus({ assignment, settings, now: '2026-10-02T20:00:00+05:30' }).outcome).toBe('absent')
     expect(getAttendanceStatus({ assignment, settings, now: '2026-10-02T11:00:00+05:30' }).outcome).toBe('awaiting-check-in')
   })
+  it('derives half-day for approved half-day leave without attendance', () => {
+    const leave = { id: 'half', employeeId: 'employee', type: 'casual' as const, startDate: '2026-10-02', endDate: '2026-10-02', duration: 'half-day' as const, reason: 'Appointment', status: 'approved' as const, decisionNote: '', submittedAt: '2026-10-01T10:00:00+05:30', decidedAt: '2026-10-01T11:00:00+05:30' }
+    expect(getAttendanceStatus({ assignment, leave, settings, now: '2026-10-02T20:00:00+05:30' })).toMatchObject({ outcome: 'half-day', detail: 'Approved half-day leave' })
+  })
+  it('uses a distinct not-scheduled outcome rather than scheduled', () => {
+    expect(getAttendanceStatus({ settings, now: '2026-10-02T10:30:00+05:30' })).toMatchObject({ outcome: 'not-scheduled', label: 'Not scheduled' })
+  })
 })

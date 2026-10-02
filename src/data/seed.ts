@@ -1,5 +1,5 @@
 import type { AttendanceRecord, AttendanceState, Department, Employee, LeaveRequest, ShiftTemplate } from '../domain/types'
-import { addDays, atRestaurantTime, datesBetween, weekday } from '../lib/dateTime'
+import { addDays, atRestaurantTime, datesBetween, DEMO_NOW, weekday } from '../lib/dateTime'
 
 export const SCHEMA_VERSION = 1
 export const SEED_DATE = '2026-10-02'
@@ -24,6 +24,7 @@ const shiftTemplates: ShiftTemplate[] = [
   { id: 'lunch', name: 'Lunch Service', startTime: '10:00', endTime: '19:00', endsNextDay: false, plannedBreakMinutes: 45 },
   { id: 'dinner', name: 'Dinner Service', startTime: '14:00', endTime: '23:00', endsNextDay: false, plannedBreakMinutes: 45 },
   { id: 'closing', name: 'Closing Crew', startTime: '17:00', endTime: '02:00', endsNextDay: true, plannedBreakMinutes: 45 },
+  { id: 'private-event', name: 'Private Event Close', startTime: '23:00', endTime: '11:00', endsNextDay: true, plannedBreakMinutes: 60 },
 ]
 
 function initials(name: string) { return name.split(' ').map((part) => part[0]).join('').replace("'", '').slice(0, 2).toUpperCase() }
@@ -64,14 +65,33 @@ export function createSeedState(): AttendanceState {
       attendanceRecords.push({ id: `att-${employee.id}-${date}`, employeeId: employee.id, assignmentId: assignment.id, workDate: date, checkInAt, checkOutAt, breaks: [{ id: `break-${employee.id}-${date}`, startAt: new Date(new Date(checkInAt).getTime() + 4 * 60 * 60_000).toISOString(), endAt: new Date(new Date(checkInAt).getTime() + (4 * 60 + 45) * 60_000).toISOString() }], managerNote: late ? 'Traffic delay noted.' : '' })
     })
   }
-  // Replace today's generic future rows with a useful live operational snapshot.
-  const todayAssignments = assignments.filter((item) => item.workDate === SEED_DATE && item.kind === 'shift')
-  todayAssignments.slice(0, 9).forEach((assignment, index) => {
-    if (assignment.employeeId === 'emp-06') return
-    const checkInAt = new Date(new Date(assignment.startAt!).getTime() + (index === 2 ? 12 : 0) * 60_000).toISOString()
-    const hasBreak = index === 1
-    attendanceRecords.push({ id: `att-${assignment.employeeId}-${SEED_DATE}`, employeeId: assignment.employeeId, assignmentId: assignment.id, workDate: SEED_DATE, checkInAt, checkOutAt: index === 8 ? '2026-10-02T09:50:00+05:30' : null, breaks: hasBreak ? [{ id: `break-${assignment.employeeId}-${SEED_DATE}`, startAt: '2026-10-02T10:15:00+05:30', endAt: null }] : [], managerNote: index === 2 ? 'Late due to metro delay.' : '' })
+  // Today is intentionally bounded by DEMO_NOW: no fabricated future attendance.
+  const todayAssignments = assignments.filter((item) => item.workDate === SEED_DATE && item.kind === 'shift' && item.startAt && Date.parse(item.startAt) <= Date.parse(DEMO_NOW) && item.employeeId !== 'emp-06')
+  todayAssignments.slice(0, 3).forEach((assignment, index) => {
+    const checkInAt = assignment.startAt!
+    const checkOutAt = index === 2 ? '2026-10-02T10:20:00+05:30' : null
+    attendanceRecords.push({ id: `att-${assignment.employeeId}-${SEED_DATE}`, employeeId: assignment.employeeId, assignmentId: assignment.id, workDate: SEED_DATE, checkInAt, checkOutAt, breaks: index === 1 ? [{ id: `break-${assignment.employeeId}-${SEED_DATE}`, startAt: '2026-10-02T10:15:00+05:30', endAt: null }] : [], managerNote: '' })
   })
+  // An unscheduled early arrival is deliberately retained as an exception, not silently treated as absence.
+  const unscheduledAssignment = assignments.find((item) => item.employeeId === 'emp-24' && item.workDate === SEED_DATE && item.kind === 'shift')!
+  assignments.splice(assignments.indexOf(unscheduledAssignment), 1)
+  attendanceRecords.push({ id: `att-emp-24-${SEED_DATE}`, employeeId: 'emp-24', workDate: SEED_DATE, checkInAt: '2026-10-02T09:45:00+05:30', checkOutAt: null, breaks: [], managerNote: 'Arrived early to support breakfast prep.' })
+  // A completed half-day exists in history for reports and profile status coverage.
+  const halfDayAssignment = assignments.find((item) => item.employeeId === 'emp-10' && item.workDate === '2026-09-24' && item.kind === 'shift')!
+  const historicalIndex = attendanceRecords.findIndex((record) => record.employeeId === 'emp-10' && record.workDate === '2026-09-24')
+  const halfDayRecord: AttendanceRecord = { id: `att-emp-10-2026-09-24`, employeeId: 'emp-10', assignmentId: halfDayAssignment.id, workDate: '2026-09-24', checkInAt: '2026-09-24T07:00:00+05:30', checkOutAt: '2026-09-24T10:30:00+05:30', breaks: [{ id: 'break-emp-10-2026-09-24', startAt: '2026-09-24T08:30:00+05:30', endAt: '2026-09-24T09:00:00+05:30' }], managerNote: 'Left after a medical appointment.' }
+  if (historicalIndex >= 0) attendanceRecords[historicalIndex] = halfDayRecord
+  else attendanceRecords.push(halfDayRecord)
+  // A pre-booked private event runs across midnight and remains open during the demo morning.
+  const overnightAssignment = assignments.find((item) => item.employeeId === 'emp-05' && item.workDate === '2026-10-01' && item.kind === 'shift')!
+  overnightAssignment.shiftTemplateId = 'private-event'
+  overnightAssignment.startAt = '2026-10-01T23:00:00+05:30'
+  overnightAssignment.endAt = '2026-10-02T11:00:00+05:30'
+  overnightAssignment.plannedBreakMinutes = 60
+  const overnightIndex = attendanceRecords.findIndex((record) => record.employeeId === 'emp-05' && record.workDate === '2026-10-01')
+  const overnightRecord: AttendanceRecord = { id: 'att-emp-05-2026-10-01', employeeId: 'emp-05', assignmentId: overnightAssignment.id, workDate: '2026-10-01', checkInAt: '2026-10-01T23:00:00+05:30', checkOutAt: null, breaks: [{ id: 'break-emp-05-2026-10-01', startAt: '2026-10-02T03:15:00+05:30', endAt: '2026-10-02T04:15:00+05:30' }], managerNote: 'Assigned to the overnight private event close.' }
+  if (overnightIndex >= 0) attendanceRecords[overnightIndex] = overnightRecord
+  else attendanceRecords.push(overnightRecord)
   const correctionTarget = attendanceRecords.find((record) => record.workDate === '2026-09-29')!
   return {
     schemaVersion: SCHEMA_VERSION, seededDate: SEED_DATE,

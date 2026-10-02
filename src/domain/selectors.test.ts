@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { createSeedState } from '../data/seed'
-import { filterAttendanceRecords, selectDashboardMetrics, selectEmployeeReport } from './selectors'
+import { DEMO_NOW } from '../lib/dateTime'
+import { getAttendanceStatus } from './attendance'
+import { assignmentFor, filterAttendanceRecords, selectDashboardMetrics, selectEmployeeReport, selectLiveAttendance } from './selectors'
 
 describe('attendance selectors', () => {
   it('reconciles today’s live dashboard totals from one seed dataset', () => {
@@ -24,5 +26,30 @@ describe('attendance selectors', () => {
     expect(report.leaveDays).toBe(2)
     expect(report.expectedDays).toBe(0)
     expect(report.attendanceRate).toBeNull()
+  })
+
+  it('counts half-day attendance as a half expected and attended day', () => {
+    const state = createSeedState()
+    const report = selectEmployeeReport(state, 'emp-10', '2026-09-24', '2026-09-24', DEMO_NOW)!
+    expect(report.expectedDays).toBe(1)
+    expect(report.attendedDays).toBe(0.5)
+    expect(report.attendanceRate).toBe(50)
+  })
+
+  it('exposes the seeded half-day, unscheduled check-in, and overnight session', () => {
+    const state = createSeedState()
+    const halfDay = state.attendanceRecords.find((record) => record.id === 'att-emp-10-2026-09-24')!
+    expect(getAttendanceStatus({ record: halfDay, assignment: assignmentFor(state, halfDay.employeeId, halfDay.workDate), settings: state.restaurant, now: DEMO_NOW }).outcome).toBe('half-day')
+    const unscheduled = state.attendanceRecords.find((record) => record.id === 'att-emp-24-2026-10-02')!
+    expect(getAttendanceStatus({ record: unscheduled, settings: state.restaurant, now: DEMO_NOW }).flags).toContain('unscheduled')
+    expect(selectLiveAttendance(state, '2026-10-02', DEMO_NOW).some((row) => row.record?.id === 'att-emp-05-2026-10-01')).toBe(true)
+  })
+
+  it('keeps unscheduled records separate from the scheduled status filter', () => {
+    const state = createSeedState()
+    const unscheduled = filterAttendanceRecords(state, { startDate: '2026-10-02', endDate: '2026-10-02', statuses: ['unscheduled'] }, DEMO_NOW)
+    const scheduled = filterAttendanceRecords(state, { startDate: '2026-10-02', endDate: '2026-10-02', statuses: ['scheduled'] }, DEMO_NOW)
+    expect(unscheduled.map((record) => record.id)).toContain('att-emp-24-2026-10-02')
+    expect(scheduled.map((record) => record.id)).not.toContain('att-emp-24-2026-10-02')
   })
 })

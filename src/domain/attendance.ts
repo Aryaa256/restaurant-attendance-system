@@ -3,7 +3,7 @@ import { addMinutes, minutesBetween } from '../lib/dateTime'
 
 export function validateBreaks(record: AttendanceRecord, now: string): string | null {
   const intervalEnd = record.checkOutAt ?? now
-  const ordered = [...record.breaks].sort((a, b) => a.startAt.localeCompare(b.startAt))
+  const ordered = [...record.breaks].sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt))
   if (record.breaks.filter((item) => item.endAt === null).length > 1) return 'Only one break can be open.'
   for (let index = 0; index < ordered.length; index += 1) {
     const item = ordered[index]
@@ -37,8 +37,9 @@ export function isApprovedLeaveForDate(requests: LeaveRequest[], employeeId: str
 export function getAttendanceStatus(args: { record?: AttendanceRecord; assignment?: ShiftAssignment; leave?: LeaveRequest; settings: RestaurantSettings; now: string }): AttendanceStatus {
   const { record, assignment, leave, settings, now } = args
   if (leave?.duration === 'full-day') return { outcome: 'on-leave', flags: [], label: 'On Leave', detail: leave.type }
+  if (leave?.duration === 'half-day' && !record) return { outcome: 'half-day', flags: [], label: 'Half Day', detail: 'Approved half-day leave' }
   if (assignment?.kind === 'weekly-off') return { outcome: 'weekly-off', flags: [], label: 'Weekly Off' }
-  if (!assignment && !record) return { outcome: 'scheduled', flags: [], label: 'Not scheduled' }
+  if (!assignment && !record) return { outcome: 'not-scheduled', flags: [], label: 'Not scheduled' }
   if (!record) {
     if (assignment?.startAt && Date.parse(now) < Date.parse(assignment.startAt)) return { outcome: 'scheduled', flags: [], label: 'Scheduled' }
     if (assignment?.endAt && Date.parse(now) > Date.parse(assignment.endAt)) return { outcome: 'absent', flags: [], label: 'Absent' }

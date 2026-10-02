@@ -5,7 +5,7 @@ export type Department = 'Kitchen' | 'Service' | 'Bar' | 'Operations' | 'Houseke
 export type EmploymentStatus = 'active' | 'inactive'
 export type LeaveType = 'annual' | 'sick' | 'casual' | 'unpaid'
 export type RequestStatus = 'pending' | 'approved' | 'rejected'
-export type AttendanceOutcome = 'scheduled' | 'awaiting-check-in' | 'present' | 'absent' | 'on-leave' | 'weekly-off' | 'half-day'
+export type AttendanceOutcome = 'scheduled' | 'not-scheduled' | 'awaiting-check-in' | 'present' | 'absent' | 'on-leave' | 'weekly-off' | 'half-day'
 export type AttendanceFlag = 'late' | 'overtime' | 'on-break' | 'unscheduled'
 
 export interface RestaurantSettings {
@@ -114,6 +114,12 @@ export interface AuditEvent {
   summary: string
 }
 
+export interface MutationResult {
+  ok: boolean
+  action: string
+  message: string
+}
+
 export interface AttendanceState {
   schemaVersion: number
   seededDate: LocalDate
@@ -125,6 +131,7 @@ export interface AttendanceState {
   leaveRequests: LeaveRequest[]
   correctionRequests: CorrectionRequest[]
   auditEvents: AuditEvent[]
+  lastMutation?: MutationResult
 }
 
 export interface AttendanceStatus {

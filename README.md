@@ -1,32 +1,25 @@
-# React + TypeScript + Vite
+# Tava restaurant attendance
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A responsive, local-first restaurant attendance demonstration for the fictional Tava Kadai team. It has no backend or authentication: all data is deterministic fictional seed data and changes persist in browser localStorage.
 
-Currently, two official plugins are available:
+## Run locally
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Requires Node 20.19+ or Node 22.12+.
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm install
+npm run dev
+npm run build
+npm test
+npm run lint
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## Demo workflows
+
+- Dashboard totals reconcile scheduled, showed-up, currently-working, on-break, leave, late, and absence states from one shared attendance store.
+- Attendance has route-query-backed date, employee search, department, role, shift, and status filters; monthly, corrections, and overtime views; manual check-in; break, checkout, and correction actions.
+- Directory and profiles read seeded employees and calculated employee reports. Employee creation and active roster assignment persist locally.
+- Leave and correction decisions update the same state used by staffing and reporting. Shifts support dated assignments and weekly offs.
+- Reports use selected date ranges and provide CSV export. Settings update attendance grace/overtime policy calculations and can restore the original seed data after confirmation.
+
+The demo uses `Asia/Kolkata` and deterministic records around 2 October 2026. It intentionally does not provide payroll, biometric hardware, notifications, or production authentication.

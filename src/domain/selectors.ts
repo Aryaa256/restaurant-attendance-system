@@ -69,9 +69,11 @@ export function selectEmployeeReport(state: AttendanceState, employeeId: string,
     const record = recordFor(state, employeeId, date)
     const leave = isApprovedLeaveForDate(state.leaveRequests, employeeId, date)
     if (leave?.duration === 'full-day') { leaveDays += 1; continue }
-    if (assignment?.kind === 'shift') expectedDays += 1
+    const isExpectedShift = assignment?.kind === 'shift'
+    if (isExpectedShift) expectedDays += leave?.duration === 'half-day' ? 0.5 : 1
     if (record) {
-      attendedDays += 1
+      const status = getAttendanceStatus({ record, assignment, leave, settings: state.restaurant, now })
+      if (isExpectedShift) attendedDays += status.outcome === 'half-day' ? 0.5 : 1
       const metrics = getAttendanceMetrics(record, assignment, state.restaurant, now)
       netWorkMinutes += metrics.netWorkMinutes; overtimeMinutes += metrics.overtimeMinutes
       if (metrics.lateMinutes > 0) lateArrivals += 1
